@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>YOLO COCO Test Benchmark</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar">
+        <div>
+          <p class="eyebrow">Web Inference MVP</p>
+          <h1>YOLO COCO Test Benchmark</h1>
+        </div>
+        <div class="model-state">
+          <span class="dot {{ 'on' if model_path else '' }}"></span>
+          <span>{{ 'MODEL_PATH configured' if model_path else 'Model upload required' }}</span>
+        </div>
+      </section>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="alerts">
+            {% for category, message in messages %}
+              <div class="alert {{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <section class="panel upload-panel">
+        <form method="post" enctype="multipart/form-data">
+          <label>
+            <span>COCO JSON</span>
+            <input type="file" name="json_file" accept="application/json,.json" required>
+          </label>
+          <label>
+            <span>Test Images</span>
+            <input type="file" name="image_files" accept="image/*" multiple required>
+          </label>
+          <label>
+            <span>YOLO Model (.pt)</span>
+            <input type="file" name="model_file" accept=".pt">
+          </label>
+          <button type="submit">Run Benchmark</button>
+        </form>
+      </section>
+
+      {% if metrics %}
+        {% if missing_images %}
+          <section class="panel warning">
+            <strong>Skipped {{ missing_images|length }} JSON image(s)</strong>
+            <span>Uploaded files did not include matching basenames for those COCO records.</span>
+          </section>
+        {% endif %}
+
+        <section class="metric-grid">
+          <div class="metric">
+            <span>Overall mAP50</span>
+            <strong>{{ metrics.map50|score }}</strong>
+          </div>
+          <div class="metric">
+            <span>Overall mAP50-95</span>
+            <strong>{{ metrics.map5095|score }}</strong>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-title">
+            <h2>Label Scores</h2>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Label</th>
+                  <th>GT</th>
+                  <th>Pred</th>
+                  <th>mAP50</th>
+                  <th>mAP50-95</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in metrics.classes %}
+                  <tr>
+                    <td>{{ row.name }}</td>
+                    <td>{{ row.gt_count }}</td>
+                    <td>{{ row.prediction_count }}</td>
+                    <td>{{ row.map50|score }}</td>
+                    <td>{{ row.map5095|score }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-title">
+            <h2>Case Results</h2>
+            <p><span class="legend gt"></span>GT <span class="legend pred"></span>Prediction</p>
+          </div>
+          <div class="case-grid">
+            {% for case in cases %}
+              <article class="case-card">
+                <img src="{{ case.result_url }}" alt="Annotated result for {{ case.file_name }}">
+                <div class="case-body">
+                  <h3 title="{{ case.file_name }}">{{ case.file_name }}</h3>
+                  <div class="counts">
+                    <span>GT {{ case.gt_count }}</span>
+                    <span>Pred {{ case.prediction_count }}</span>
+                  </div>
+                  <div class="chips">
+                    {% for pred in case.predictions[:8] %}
+                      <span>{{ pred.label }} {{ '%.2f'|format(pred.score) }}</span>
+                    {% else %}
+                      <span>No detections</span>
+                    {% endfor %}
+                  </div>
+                </div>
+              </article>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+    </main>
+  </body>
+</html>
